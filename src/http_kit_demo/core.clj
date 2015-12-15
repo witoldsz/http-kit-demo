@@ -1,11 +1,20 @@
 (ns http-kit-demo.core
   (:gen-class)
-  (:require [org.httpkit.server :refer [run-server]]))
+  (:require [org.httpkit.server :refer [run-server]]
+            [ring.util.response :refer [not-found]]
+            [ring.middleware.resource :refer [wrap-resource]]))
 
-(defn app [req]
-  {:status  200
-   :headers {"Content-Type" "text/html"}
-   :body    "hello HTTP!"})
+(defn handler [req] (not-found "not found"))
+
+(def app
+  (-> handler
+    (wrap-resource "public")
+    (fn [handler]
+      (fn [req]
+        (with-channel req channel ; get the channel
+          (if (websocket? channel) ; if you want to distinguish them
+            (on-receive channel (fn [data] (send! channel data)))
+            handler))))))
 
 (defn -main
   [& args]
